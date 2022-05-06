@@ -3,54 +3,47 @@ class Play extends Phaser.Scene {
       super("playScene");
     }
     preload() {
-        this.load.image('city', './assets/bg.png');
-        this.load.image('city2', './assets/bg2.png');
-        this.load.image('player','./assets/player.png')
-        this.load.image('floor','./assets/floor.png')
-        this.load.image('car','./assets/car.png')
-        this.load.image('meteor','./assets/meteor.png')
-        this.load.image('shield','./assets/shield.png')
+        this.load.path = "./assets/";
+        this.load.image('1', '1.png');
+        this.load.image('2', '2.png');
+        this.load.image('player','player.png');
+        this.load.image('floor','floor.png');
+        this.load.image('monster','monster.png');
+        this.load.image('bat','bat.png');
        
     }
 
-    create() { // define keys
+    create() { 
+        // define keys
         this.jump_sound = this.sound.add('jump');
-        this.hit = this.sound.add('hit');
-        this.shield_get = this.sound.add('shield');
-        this.shield_off = this.sound.add('off');
-        this.duck = this.sound.add('duck');
-        this.slide = this.sound.add('slide');
-        //this.bgm = this.sound.add('music');
+        this.sit = this.sound.add('sit');
+        this.bgm1 = this.sound.add('bgm1');
+        this.bgm2 = this.sound.add('bgm2');
+
+        // add background music
+        this.bgm1.play();
+
+        // adding keys
         keyUP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
         keyDOWN = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
+        keyF = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
         
-        // set some constants
-        this.JUMP_VELOCITY = -1000;
-        this.SCROLL_SPEED = 5;
-        this.SPEED_MULT = 1;
+        // setting values
+        this.jumpSpeed = -1000;
+        this.changedSpeed = 5;
+        this.speeding = 1;
         this.physics.world.gravity.y = 2600; 
 
-        // background
-        this.cityscape = this.add.tileSprite(0, 0, game.config.width, game.config.height, 'city').setOrigin(0);
-        // make collision groups
+        this.scenes = this.add.tileSprite(0, 0, game.config.width, game.config.height, '1').setOrigin(0);
+
         this.ground = this.add.group();
-        this.power = this.add.group();
         this.enemy = this.add.group();
 
-        // create player
-        this.player = this.physics.add.sprite(50, 450,  'player').setOrigin(.5,.5);
+        // initial player setting
+        this.player = this.physics.add.sprite(50, 450, 'player').setOrigin(0.5,0.5);
 
-        // create shield on player
-        this.trash = this.add.rectangle(50,450,20,20,'yellow');
-        this.trash.alpha= 0;
-
-        // make shield item
-        this.shield = this.physics.add.sprite(-50, 200 ,  'shield').setOrigin(0);
-        this.shield.body.allowGravity = false;
-        this.power.add(this.shield);
-
-        // player health
-        this.p1Health = 1;
+        // player state
+        this.playerState = 1;
 
         // make ground tiles
         for(let i = 0; i < game.config.width; i += tileSize) { 
@@ -67,87 +60,64 @@ class Play extends Phaser.Scene {
         }
         
 
-        // create car obj
-        this.car = this.physics.add.sprite(game.config.width, 455 ,  'car').setOrigin(0);
-        this.hood = this.physics.add.sprite(game.config.width+30, 445 ,  'car').setOrigin(0.5,0.5);
+        // create monster(the big one)
+        this.monster = this.physics.add.sprite(game.config.width, 455 ,  'monster').setOrigin(0);
+        this.hood = this.physics.add.sprite(game.config.width+30, 445 ,  'monster').setOrigin(0.5,0.5);
         this.hood.setSize(50,60);
-        this.hood.setDisplaySize(60,5);
-        this.car.body.allowGravity = false;
+        this.hood.setDisplaySize(60,50);
+        this.monster.body.allowGravity = false;
         this.hood.body.allowGravity = false;
         this.hood.body.immovable = true;
         
 
-        // meteor obj
-        this.meteor =  this.physics.add.sprite(game.config.width, Math.random()*(425-380)+380,  'meteor').setOrigin(0);
-        this.meteor.body.allowGravity = false;
+        // monster2 (the smaller one)
+        this.bat =  this.physics.add.sprite(game.config.width, Math.random()*(425-380)+380,  'bat').setOrigin(0);
+        this.bat.body.allowGravity = false;
         
         // add enemies to group
         this.enemy = this.add.group();
-        this.meteors = this.add.group();
-        this.enemy.add(this.car);
-        this.enemy.add(this.meteor);
-        this.meteors.add(this.meteor)
+        this.bats = this.add.group();
+        this.enemy.add(this.monster);
+        this.enemy.add(this.bat);
+        this.bats.add(this.bat)
         
         
         
-        // add physics collider
+        // player's physical settings
         this.physics.add.collider(this.player, this.ground);
-        this.physics.add.collider(this.car, this.ground);
-        this.physics.add.collider(this.shield, this.player, ()=>{
-            this.shield_get.play();
-            this.trash.alpha= 1;
+        this.physics.add.collider(this.monster, this.ground);
+        this.physics.add.collider(this.monster,  this.player, ()=>{
             this.player.setVelocityX(0);
             this.player.setVelocityY(0);
-            this.shield.x = -50;
-            this.shield.y = 200;
-            this.p1Health++;
-            this.shield.body.setVelocityX(0);
-            this.shield.body.setVelocityY(0);
+            this.playerState--;
         });
-        this.physics.add.collider(this.car,  this.player, ()=>{
-            this.trash.alpha= 0;
-            this.car_reset();
-            if(this.p1Health>1){
-                this.shield_off.play();
-            }else{
-                this.hit.play();  
-            }
+        this.physics.add.collider(this.bats, this.player, ()=>{
             this.player.setVelocityX(0);
             this.player.setVelocityY(0);
-            this.p1Health--;
-        });
-        this.physics.add.collider(this.meteors, this.player, ()=>{
-            this.trash.alpha= 0;
-            this.meteor_reset();
-            if(this.p1Health>1){
-                this.shield_off.play();
-            }else{
-                this.hit.play();  
-            }
-            
-            this.player.setVelocityX(0);
-            this.player.setVelocityY(0);
-            this.p1Health--;
+            this.playerState--;
         });
         this.physics.add.collider(this.player, this.hood, ()=>{
             this.player.body.setVelocityY(0);
             this.player.body.setVelocityX(-1*this.hood.body.velocity.x+300);
         });
 
-        // game over variable 
+        // game over flag
         this.gameOver = false;
         
 
-        // starting vel for enemy objs
-        this.car.body.setVelocityX(-300);
+        // speed setting
+        this.monster.body.setVelocityX(-300);
         this.hood.body.setVelocityX(-300);
-        this.meteor.body.setVelocityX(-400);
+        this.bat.body.setVelocityX(-400);
 
-        // text config
+        // setting a countdown 
+        this.clock = this.time.delayedCall(15000, () => {
+           
+        }, null, this);
         let textConfig = {
-            fontFamily: 'Alagard',
-            fontSize: '40px',
-            color: '#000000',
+            fontFamily: 'Fantasy',
+            fontSize: '90px',
+            color: '#5C44C2',
             align: 'center',
             padding: {
                 top: 5,
@@ -155,82 +125,48 @@ class Play extends Phaser.Scene {
             },
             fixedWidth: 0
         }
-        let dropshadow = {
-            fontFamily: 'Alagard',
-            fontSize: '40px',
-            color: '#505050',
-            align: 'center',
-            padding: {
-                top: 5,
-                bottom: 5,
-            },
-            fixedWidth: 0
-        }
-        
+        this.timerRight = this.add.text(game.config.width/2-8, 12, + this.clock.getElapsedSeconds(), textConfig);
 
-        // SCORING
-        this.score = 0;
-        this.scoreRightDropshadow = this.add.text(12, 12, "Distance: "+this.score+" mi", dropshadow).setOrigin(0);
-        this.scoreRight = this.add.text(10, 10, "Distance: "+this.score+" mi", textConfig).setOrigin(0);
-        this.time.addEvent({ delay: 2500, callback: this.miles, callbackScope: this, loop: true });
-
-        if(highScore>=0){
-            this.highScoreShadow = this.add.text(game.config.width-8, 12, "High Score: "+highScore+" mi", dropshadow).setOrigin(1,0);
-            this.highScoreDisplay = this.add.text(game.config.width-10, 10, "High Score: "+highScore+" mi", textConfig).setOrigin(1,0);
-
-        // powerup spawn
-        this.time.addEvent({ delay: 10000, callback: this.shieldSpawn, callbackScope: this, loop: true });
-        }
-
-
-        this.scene2 = this.time.delayedCall(15000, () => {
+        // change to the next scene, speeding up
+        this.scene2 = this.time.delayedCall(5000, () => {
+            this.bgm1.stop();
+            this.bgm2.play();
             this.player.setDepth(1);
-            this.meteor.setDepth(1);
-            this.car.setDepth(1);
+            this.bat.setDepth(1);
+            this.monster.setDepth(1);
             this.hood.setDepth(1);
-            this.shield.setDepth(1);
-            this.trash.setDepth(1);
-            this.scoreRightDropshadow.setDepth(1);
-            this.scoreRight.setDepth(1);
-            this.highScoreShadow.setDepth(1);
-            this.highScoreDisplay.setDepth(1);
-            this.cityscape.setDepth(0);
-            this.cityscape = this.add.tileSprite(0, 0, game.config.width, game.config.height, 'city2').setOrigin(0);
-            this.cityscape.setDepth(0);
-            this.SCROLL_SPEED +=10;
-            this.SPEED_MULT = 2;
+            this.scenes.setDepth(0);
+            this.scenes = this.add.tileSprite(0, 0, game.config.width, game.config.height, '2').setOrigin(0);
+            this.scenes.setDepth(0);
+            this.changedSpeed += 10;
+            this.speeding = 2;
             }, null, this);
-            this.state="behind"
+            this.state= "behind"
 
     }
-
-        
     update() {
-        console.log("Player X \: "+this.player.x);
-        // update tile sprites (tweak for more "speed")
-
+        
+        if (Phaser.Input.Keyboard.JustDown(keyF)) {
+            this.sound.play('blip');
+            this.scene.start('playScene');
+            this.bgm1.stop();
+            this.bgm2.stop();
+    }
+            
         // game ending handling
         if(this.gameOver){
-            //this.bgm.setLoop(false);
-        //this.bgm.stop();
-            if(this.score>highScore){
-                highScore = this.score;
-            }
+
             this.scene.start('menuScene');
+            this.bgm1.stop();
+            this.bgm2.stop();
         }
 
 
-        // what to do in game runtime
         if(!this.gameOver){
-                
-            //make bg scroll
-            this.cityscape.tilePositionX += this.SCROLL_SPEED; 
-            //this.groundTile += this.SCROLL_SPEED;
-
-            //check for player touching ground
+            this.scenes.tilePositionX += this.changedSpeed;
             this.player.onGround = this.player.body.touching.down;
 
-            // FIXME: player position can exceed 50 if ducking while velocity.x > 0
+            
 
             if(this.player.x<50){
                 this.state = "behind";
@@ -262,126 +198,96 @@ class Play extends Phaser.Scene {
 
             }
           
-            
 
-
-            // jumping controller
+            // jumping control
             if(this.jump>0 && Phaser.Input.Keyboard.DownDuration(keyUP,100)&&!keyDOWN.isDown) {
-                // console.log("I JUMPED POGGERS");
+         
                 this.jump_sound.play();
                 this.player.body.setVelocityY(-800);
                 this.jumping=true;
             }
             if(this.jumping && keyDOWN.isUp) {
-                // console.log("LET GO OF SPCACE");
+ 
                 this.jump--;
                 this.jumping = false;
             }
 
 
-            // reset things when they go off screen
-            if(this.car.body.x <-200){
-                // console.log("OFFSCREEN XD"); 
-                this.car_reset();
+            // change setting while jumping to scene2
+            if(this.monster.body.x <-200){
+                this.monster_reset();
             }
             
-            if(this.meteor.body.x <-200||this.meteor.body.velocity.x==0){
-                // console.log("OFFSCREEN XD"); 
-                this.meteor_reset();
+            if(this.bat.body.x <-200||this.bat.body.velocity.x==0){
+                this.bat_reset();
             }
             
-            if((this.meteor.tilePositionX-this.car.tilePositionX)>-100||(this.car.tilePositionX-this.meteor.tilePositionX)>-100){
-                this.meteor.body.velocity.x+=30;
+            if((this.bat.tilePositionX-this.monster.tilePositionX)>-100||(this.monster.tilePositionX-this.bat.tilePositionX)>-100){
+                this.bat.body.velocity.x+=30;
             }
 
-            // controlling the sliding
             if(keyDOWN.isDown){
                 if(Phaser.Input.Keyboard.JustDown(keyDOWN)){
-                   this.duck.play(); 
-                this.slide.setLoop(true);
-                this.slide.play();
+                   this.sit.play(); 
+              
                 }
-                
-                this.player.angle = 90;
-                this.player.setSize(65,40);
-                this.player.setDisplaySize(45,70);
+                // initial size
+                this.player.setSize(75,50);
+                // changing size
+                this.player.setDisplaySize(40,30);
                 
                 if(!this.jumping){
-                // this.player.y = 467.5;
                 this.player.body.setVelocityY(700);
                 }
             }
 
 
-            // resetting after done sliding
+            // player's state after pressing DOWN
             if(Phaser.Input.Keyboard.JustUp(keyDOWN)||this.player.y>game.config.height){
-                this.slide.setLoop(false);
-                this.slide.stop();
+              
                 this.player.body.setVelocityY(0);
-                this.player.angle = 0;
+              
+                // jumping high after pressing keyDOWN
                 this.player.y = 450;
-                this.player.setSize(40,65);
+                // player's position after pressing keyDOWN
+                this.player.setSize(50,75);
+                // player's scale after pressing keyDOWN
                 this.player.setDisplaySize(45,70);
 
             }
-            
 
-            // take of shield if player is hit
-            if(this.p1Health>1){
-                this.trash.x = this.player.x;
-                this.trash.y = this.player.y;
-
-            }
-
-            //when player health reaches 0 or off screen end the game
-            if(this.p1Health <= 0||this.player.x<-30){
-                this.slide.setLoop(false);
+            if(this.playerState <= 0||this.player.x<-30){
+                
                 this.gameOver = true;
             }
-        }  
-
-    }
-
-
-    // updates the score 
-    miles(){
-        this.score +=.5;
-        this.scoreRight.text = "Distance: "+this.score + " mi";
-        this.scoreRightDropshadow.text = "Distance: "+this.score + " mi";
-    }
-
-
-    // spawn the shield
-    shieldSpawn(){
-        if(this.p1Health==1&&this.shield.x<0){
-            this.shield.x = game.config.width + 50;
-            this.shield.y =  Math.random()*(600-400)+400
-            this.shield.body.setVelocityX(-200);
-            this.shield.body.setVelocityY(0);
         }
+        
+        this.time1 = Math.trunc(15 - this.clock.getElapsedSeconds());
+        this.timerRight.text = this.time1;
+
+        
     }
 
 
-    // reset the meteor 
-    meteor_reset(){
-        this.meteor.destroy();
-        this.meteor =  this.physics.add.sprite(game.config.width, Math.random()*(425-380)+380,  'meteor').setOrigin(0);
-        this.meteor.body.allowGravity = false;
-        this.meteor.x = game.config.width+50;
-        this.meteor.setVelocityY(0);
-        this.meteor.setVelocityX((-1*((Math.random()*(500-400)+400)))*this.SPEED_MULT);
-        this.meteor.y = Math.random()*(425-380)+380;
-        this.meteors.add(this.meteor);
+    bat_reset(){
+        this.bat.destroy();
+        this.bat =  this.physics.add.sprite(game.config.width, Math.random()*(425-380)+380,  'bat').setOrigin(0);
+        this.bat.body.allowGravity = false;
+        this.bat.x = game.config.width+50;
+        this.bat.setVelocityY(0);
+        this.bat.setVelocityX((-1*((Math.random()*(500-400)+400)))*this.speeding);
+        this.bat.y = Math.random()*(425-380)+380;
+        this.bats.add(this.bat);
 
     }
 
 
-    //reset the car
-    car_reset(){
-        this.car.x = game.config.width+50;
-        this.num = (-1*((Math.random()*(500-300)+300)))*this.SPEED_MULT;
-        this.car.body.setVelocityX(this.num);
-        this.hood.x = this.car.x+30;
+
+    monster_reset(){
+        this.monster.x = game.config.width+50;
+        this.num = (-1*((Math.random()*(500-300)+300)))*this.speeding;
+        this.monster.body.setVelocityX(this.num);
+        this.hood.x = this.monster.x+30;
         this.hood.body.setVelocityX(this.num);
 
     }
